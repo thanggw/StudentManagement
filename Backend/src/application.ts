@@ -52,7 +52,7 @@ export class MyLoopbackAppApplication extends BootMixin(
     );
 
     this.bind(TokenServiceBindings.TOKEN_EXPIRES_IN).to(
-      process.env.JWT_EXPIRES_IN || '7d',
+      process.env.JWT_EXPIRES_IN || '3600',
     );
 
     // Bind custom user service với custom binding key
