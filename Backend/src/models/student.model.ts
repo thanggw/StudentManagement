@@ -1,14 +1,8 @@
-import {Entity, model, property} from '@loopback/repository';
-
+import {model, property, hasMany} from '@loopback/repository';
+import {BaseEntity} from './base.model';
+import {Enrollment, EnrollmentWithRelations} from './enrollment.model';
 @model()
-export class Student extends Entity {
-  @property({
-    type: 'string',
-    id: true,
-    generated: true,
-  })
-  id?: string;
-
+export class Student extends BaseEntity {
   @property({
     type: 'string',
     required: true,
@@ -57,6 +51,8 @@ export class Student extends Entity {
   })
   status: string;
 
+  @hasMany(() => Enrollment, {keyTo: 'studentId'})
+  enrollments?: EnrollmentWithRelations[];
 
   constructor(data?: Partial<Student>) {
     super(data);
@@ -65,6 +61,7 @@ export class Student extends Entity {
 
 export interface StudentRelations {
   // describe navigational properties here
+  enrollments?: EnrollmentWithRelations[];
 }
 
 export type StudentWithRelations = Student & StudentRelations;

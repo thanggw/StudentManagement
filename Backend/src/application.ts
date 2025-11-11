@@ -9,8 +9,18 @@ import {RestApplication} from '@loopback/rest';
 import {ServiceMixin} from '@loopback/service-proxy';
 import path from 'path';
 import {MySequence} from './sequence';
+import {AuthenticationComponent} from '@loopback/authentication';
+import {
+  JWTAuthenticationComponent,
+  UserServiceBindings,
+  TokenServiceBindings,
+} from '@loopback/authentication-jwt';
+import {MongodbDataSource} from './datasources';
+import {MyUserService} from './services/user.service';
 
 export {ApplicationConfig};
+
+export const CUSTOM_USER_SERVICE = 'services.CustomUserService';
 
 export class MyLoopbackAppApplication extends BootMixin(
   ServiceMixin(RepositoryMixin(RestApplication)),
@@ -18,10 +28,8 @@ export class MyLoopbackAppApplication extends BootMixin(
   constructor(options: ApplicationConfig = {}) {
     super(options);
 
-    // Set up the custom sequence
     this.sequence(MySequence);
 
-    // Set up default home page
     this.static('/', path.join(__dirname, '../public'));
 
     // Customize @loopback/rest-explorer configuration here
@@ -30,11 +38,30 @@ export class MyLoopbackAppApplication extends BootMixin(
     });
     this.component(RestExplorerComponent);
 
+    this.component(AuthenticationComponent);
+
+    // Mount jwt component
+    this.component(JWTAuthenticationComponent);
+
+    // Bind datasource
+    this.dataSource(MongodbDataSource, UserServiceBindings.DATASOURCE_NAME);
+
+    // Bind JWT configuration
+    this.bind(TokenServiceBindings.TOKEN_SECRET).to(
+      process.env.JWT_SECRET || 'my-jwt-secret-key',
+    );
+
+    this.bind(TokenServiceBindings.TOKEN_EXPIRES_IN).to(
+      process.env.JWT_EXPIRES_IN || '7d',
+    );
+
+    // Bind custom user service với custom binding key
+    this.bind(CUSTOM_USER_SERVICE).toClass(MyUserService);
+
     this.projectRoot = __dirname;
     // Customize @loopback/boot Booter Conventions here
     this.bootOptions = {
       controllers: {
-        // Customize ControllerBooter Conventions here
         dirs: ['controllers'],
         extensions: ['.controller.js'],
         nested: true,

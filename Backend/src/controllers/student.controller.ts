@@ -19,12 +19,18 @@ import {
 } from '@loopback/rest';
 import {Student} from '../models';
 import {StudentRepository} from '../repositories';
+import {BaseController} from './base.controller';
 
-export class StudentController {
+export class StudentController extends BaseController<
+  Student,
+  StudentRepository
+> {
   constructor(
     @repository(StudentRepository)
-    public studentRepository : StudentRepository,
-  ) {}
+    protected studentRepository: StudentRepository,
+  ) {
+    super(studentRepository);
+  }
 
   @post('/students')
   @response(200, {
@@ -44,7 +50,7 @@ export class StudentController {
     })
     student: Omit<Student, 'id'>,
   ): Promise<Student> {
-    return this.studentRepository.create(student);
+    return super.create(student);
   }
 
   @get('/students/count')
@@ -52,10 +58,8 @@ export class StudentController {
     description: 'Student model count',
     content: {'application/json': {schema: CountSchema}},
   })
-  async count(
-    @param.where(Student) where?: Where<Student>,
-  ): Promise<Count> {
-    return this.studentRepository.count(where);
+  async count(@param.where(Student) where?: Where<Student>): Promise<Count> {
+    return super.count(where);
   }
 
   @get('/students')
@@ -73,7 +77,7 @@ export class StudentController {
   async find(
     @param.filter(Student) filter?: Filter<Student>,
   ): Promise<Student[]> {
-    return this.studentRepository.find(filter);
+    return super.find(filter);
   }
 
   @patch('/students')
@@ -89,10 +93,10 @@ export class StudentController {
         },
       },
     })
-    student: Student,
+    student: Partial<Student>,
     @param.where(Student) where?: Where<Student>,
   ): Promise<Count> {
-    return this.studentRepository.updateAll(student, where);
+    return this.repository.updateAll(student, where);
   }
 
   @get('/students/{id}')
@@ -106,9 +110,10 @@ export class StudentController {
   })
   async findById(
     @param.path.string('id') id: string,
-    @param.filter(Student, {exclude: 'where'}) filter?: FilterExcludingWhere<Student>
+    @param.filter(Student, {exclude: 'where'})
+    filter?: FilterExcludingWhere<Student>,
   ): Promise<Student> {
-    return this.studentRepository.findById(id, filter);
+    return super.findById(id, filter);
   }
 
   @patch('/students/{id}')
@@ -124,9 +129,9 @@ export class StudentController {
         },
       },
     })
-    student: Student,
+    student: Partial<Student>, // Fix type để khớp partial schema
   ): Promise<void> {
-    await this.studentRepository.updateById(id, student);
+    await super.updateById(id, student);
   }
 
   @put('/students/{id}')
@@ -137,7 +142,7 @@ export class StudentController {
     @param.path.string('id') id: string,
     @requestBody() student: Student,
   ): Promise<void> {
-    await this.studentRepository.replaceById(id, student);
+    await super.replaceById(id, student);
   }
 
   @del('/students/{id}')
@@ -145,6 +150,6 @@ export class StudentController {
     description: 'Student DELETE success',
   })
   async deleteById(@param.path.string('id') id: string): Promise<void> {
-    await this.studentRepository.deleteById(id);
+    await super.deleteById(id);
   }
 }
