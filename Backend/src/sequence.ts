@@ -14,6 +14,7 @@ import {
   Reject,
   SequenceHandler,
   SequenceActions,
+  InvokeMiddleware,
 } from '@loopback/rest';
 import {inject} from '@loopback/core';
 
@@ -29,15 +30,19 @@ export class MySequence implements SequenceHandler {
     @inject(SequenceActionsAlias.REJECT) protected reject: Reject,
     @inject(AuthenticationBindings.AUTH_ACTION)
     protected authenticateRequest: AuthenticateFn,
+    @inject(SequenceActionsAlias.INVOKE_MIDDLEWARE)
+    protected invokeMiddleware: InvokeMiddleware,
   ) {}
 
   async handle(context: RequestContext) {
+    const {request, response} = context;
+
+    const finished = await this.invokeMiddleware(context);
+    if (finished) return;
+
     try {
-      const {request, response} = context;
       const route = this.findRoute(request);
-
       await this.authenticateRequest(request);
-
       const args = await this.parseParams(request, route);
       const result = await this.invoke(route, args);
       this.send(response, result);
