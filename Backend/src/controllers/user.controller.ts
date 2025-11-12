@@ -14,19 +14,26 @@ import {
   put,
   del,
   requestBody,
+  response,
   HttpErrors,
 } from '@loopback/rest';
 import {User} from '../models/user.model';
 import {UserRepository} from '../repositories/user.repository';
-import {BaseController} from './base.controller';
+import {createCrudController} from './base.controller';
 import {authenticate, TokenService} from '@loopback/authentication';
 import {inject} from '@loopback/core';
 import {SecurityBindings, securityId, UserProfile} from '@loopback/security';
 import {TokenServiceBindings} from '@loopback/authentication-jwt';
 import * as bcrypt from 'bcrypt';
 import {MyUserService, Credentials} from '../services/user.service';
+import {SignUpRequest} from '../dto/signup-request.dto';
 
-export class UserController extends BaseController<User, UserRepository> {
+const BaseUserController = createCrudController<User, UserRepository>(
+  User,
+  '/users',
+);
+
+export class UserController extends BaseUserController {
   constructor(
     @repository(UserRepository)
     public userRepository: UserRepository,
@@ -38,53 +45,63 @@ export class UserController extends BaseController<User, UserRepository> {
     super(userRepository);
   }
 
-  @post('/users/signup', {
-    responses: {
-      '200': {
-        description: 'User sign up',
-        content: {'application/json': {schema: getModelSchemaRef(User)}},
-      },
-    },
-  })
+  @post('/users/signup')
   async signUp(
     @requestBody({
       content: {
         'application/json': {
-          schema: getModelSchemaRef(User, {
-            title: 'NewUser',
-            exclude: ['id', 'createdAt', 'updatedAt', 'deleted'],
-          }),
+          schema: {
+            type: 'object',
+            required: ['email', 'password', 'name'],
+            properties: {
+              email: {type: 'string', format: 'email'},
+              password: {type: 'string', minLength: 6},
+              name: {type: 'string'},
+              roles: {
+                type: 'array',
+                items: {type: 'string'},
+                default: ['user'],
+              },
+            },
+          },
         },
       },
     })
-    userData: Omit<User, 'id'>,
+    userData: SignUpRequest,
   ): Promise<User> {
-    // Check if user already exists
-    const existingUser = await this.userRepository.findOne({
-      where: {email: userData.email},
-    });
+    const email = userData.email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new HttpErrors.BadRequest('Invalid email format');
+    }
+    const existingUser = await this.userRepository.findOne({where: {email}});
     if (existingUser) {
       throw new HttpErrors.BadRequest('User already exists');
     }
-
     // Hash password
     const hashedPassword = await bcrypt.hash(userData.password, 10);
-    userData.password = hashedPassword;
-
-    return this.userRepository.create(userData);
+    // Tạo user (loại bỏ password)
+    const createdUser = await this.userRepository.create({
+      email,
+      name: userData.name,
+      roles: userData.roles ?? ['user'],
+    });
+    await this.userRepository.userCredentials(createdUser.id!).create({
+      usersId: createdUser.id!,
+      password: hashedPassword,
+    });
+    return createdUser;
   }
 
   @post('/users/login', {
     responses: {
       '200': {
-        description: 'Token',
+        description: 'Login success',
         content: {
           'application/json': {
             schema: {
               type: 'object',
-              properties: {
-                token: {type: 'string'},
-              },
+              properties: {token: {type: 'string'}},
             },
           },
         },
@@ -114,16 +131,14 @@ export class UserController extends BaseController<User, UserRepository> {
     return {token};
   }
 
+  // QUAN TRỌNG: Định nghĩa route /me TRƯỚC các route generic
   @authenticate('jwt')
-  @get('/users/me', {
-    responses: {
-      '200': {
-        description: 'Current user profile',
-        content: {
-          'application/json': {
-            schema: getModelSchemaRef(User, {includeRelations: true}),
-          },
-        },
+  @get('/users/me')
+  @response(200, {
+    description: 'Current user profile',
+    content: {
+      'application/json; charset=utf-8': {
+        schema: getModelSchemaRef(User, {includeRelations: true}),
       },
     },
   })
@@ -136,17 +151,47 @@ export class UserController extends BaseController<User, UserRepository> {
   }
 
   @authenticate('jwt')
-  @get('/users', {
-    responses: {
-      '200': {
-        description: 'Array of User model instances',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'array',
-              items: getModelSchemaRef(User, {includeRelations: true}),
-            },
-          },
+  @patch('/users/me')
+  @response(200, {
+    description: 'Update current user profile',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(User, {includeRelations: true}),
+      },
+    },
+  })
+  async updateCurrentUser(
+    @inject(SecurityBindings.USER)
+    currentUserProfile: UserProfile,
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: getModelSchemaRef(User, {
+            partial: true,
+            exclude: ['id', 'roles', 'email', 'userCredentials'],
+          }),
+        },
+      },
+    })
+    userData: Partial<User>,
+  ): Promise<User> {
+    const userId = currentUserProfile[securityId];
+    if ((userData as any).password) {
+      delete (userData as any).password;
+    }
+    await this.userRepository.updateById(userId, userData);
+    return this.userRepository.findById(userId);
+  }
+
+  @authenticate('jwt')
+  @get('/users')
+  @response(200, {
+    description: 'Array of User model instances',
+    content: {
+      'application/json': {
+        schema: {
+          type: 'array',
+          items: getModelSchemaRef(User, {includeRelations: true}),
         },
       },
     },
@@ -156,15 +201,12 @@ export class UserController extends BaseController<User, UserRepository> {
   }
 
   @authenticate('jwt')
-  @get('/users/{id}', {
-    responses: {
-      '200': {
-        description: 'User model instance',
-        content: {
-          'application/json': {
-            schema: getModelSchemaRef(User, {includeRelations: true}),
-          },
-        },
+  @get('/users/{id}')
+  @response(200, {
+    description: 'User model instance',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(User, {includeRelations: true}),
       },
     },
   })
@@ -176,56 +218,8 @@ export class UserController extends BaseController<User, UserRepository> {
   }
 
   @authenticate('jwt')
-  @patch('/users/{id}', {
-    responses: {
-      '204': {
-        description: 'User PATCH success',
-      },
-    },
-  })
-  async updateById(
-    @param.path.string('id') id: string,
-    @requestBody({
-      content: {
-        'application/json': {
-          schema: getModelSchemaRef(User, {partial: true}),
-        },
-      },
-    })
-    user: Partial<User>,
-  ): Promise<void> {
-    if (user.password) {
-      user.password = await bcrypt.hash(user.password, 10);
-    }
-    return super.updateById(id, user);
-  }
-
-  @authenticate('jwt')
-  @put('/users/{id}', {
-    responses: {
-      '204': {
-        description: 'User PUT success',
-      },
-    },
-  })
-  async replaceById(
-    @param.path.string('id') id: string,
-    @requestBody() user: User,
-  ): Promise<void> {
-    if (user.password) {
-      user.password = await bcrypt.hash(user.password, 10);
-    }
-    return super.replaceById(id, user);
-  }
-
-  @authenticate('jwt')
-  @del('/users/{id}', {
-    responses: {
-      '204': {
-        description: 'User DELETE success',
-      },
-    },
-  })
+  @del('/users/{id}')
+  @response(204, {description: 'User DELETE success'})
   async deleteById(@param.path.string('id') id: string): Promise<void> {
     return super.deleteById(id);
   }

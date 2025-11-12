@@ -1,11 +1,8 @@
-import {Entity, property, model} from '@loopback/repository';
+import {Entity, property, model, hasOne} from '@loopback/repository';
 import {BaseEntity} from './base.model';
-
+import {UserCredentials} from './user-credentials.model';
 @model({
   name: 'users',
-  settings: {
-    hiddenProperties: ['password'], // Ẩn password khi trả về response
-  },
 })
 export class User extends BaseEntity {
   @property({
@@ -14,15 +11,6 @@ export class User extends BaseEntity {
     index: {unique: true},
   })
   email: string;
-
-  @property({
-    type: 'string',
-    required: true,
-    jsonSchema: {
-      minLength: 6,
-    },
-  })
-  password: string;
 
   @property({
     type: 'string',
@@ -36,6 +24,9 @@ export class User extends BaseEntity {
     default: ['user'],
   })
   roles: string[];
+
+  @hasOne(() => UserCredentials)
+  userCredentials?: UserCredentials;
 
   constructor(data?: Partial<User>) {
     super(data);

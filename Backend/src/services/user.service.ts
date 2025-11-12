@@ -5,6 +5,7 @@ import {securityId, UserProfile} from '@loopback/security';
 import {compare} from 'bcrypt';
 import {User} from '../models/user.model';
 import {UserRepository} from '../repositories/user.repository';
+import * as bcrypt from 'bcrypt';
 
 // Định nghĩa Credentials interface
 export interface Credentials {
@@ -18,24 +19,23 @@ export class MyUserService implements UserService<User, Credentials> {
     public userRepository: UserRepository,
   ) {}
 
-  async verifyCredentials(credentials: Credentials): Promise<User> {
-    const invalidCredentialsError = 'Invalid email or password.';
-
+  async verifyCredentials(credentials: {email: string; password: string}) {
     const foundUser = await this.userRepository.findOne({
       where: {email: credentials.email},
     });
-
     if (!foundUser) {
-      throw new HttpErrors.Unauthorized(invalidCredentialsError);
+      throw new HttpErrors.Unauthorized('Invalid email or password');
     }
 
-    const passwordMatched = await compare(
+    const userCreds = await this.userRepository
+      .userCredentials(foundUser.id)
+      .get();
+    const isPasswordMatched = await bcrypt.compare(
       credentials.password,
-      foundUser.password,
+      userCreds.password,
     );
-
-    if (!passwordMatched) {
-      throw new HttpErrors.Unauthorized(invalidCredentialsError);
+    if (!isPasswordMatched) {
+      throw new HttpErrors.Unauthorized('Invalid email or password');
     }
 
     return foundUser;

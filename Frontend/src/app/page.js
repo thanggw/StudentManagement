@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Users,
   GraduationCap,
@@ -9,12 +9,14 @@ import {
   Plus,
   Filter,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import StatCard from "../components/StatCard";
 import StudentList from "../components/StudentList";
 import StudentForm from "../components/StudentForm";
 import { initialStudents, majors } from "../data/students";
+import { auth } from "@/lib/apiConfig";
 import {
   generateStudentCode,
   searchStudents,
@@ -23,15 +25,61 @@ import {
   sortStudents,
 } from "../utils/helpers";
 import StudentsPage from "./students/page";
+import { getStudents } from "@/lib/api";
 
 export default function Home() {
-  const [students, setStudents] = useState(initialStudents);
+  const [students, setStudents] = useState([]);
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMajor, setSelectedMajor] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [sortConfig, setSortConfig] = useState({ key: "code", order: "asc" });
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    // Kiểm tra authentication khi load trang
+    const checkAuth = () => {
+      const token = auth.getToken();
+
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      const decoded = auth.decodeToken(token);
+      if (decoded && decoded.exp) {
+        const currentTime = Date.now() / 1000;
+        if (decoded.exp < currentTime) {
+          auth.logout();
+          return;
+        }
+      }
+
+      setIsLoading(false);
+    };
+
+    checkAuth();
+  }, [router]);
+
+  useEffect(() => {
+    async function fetchStudents() {
+      try {
+        const data = await getStudents();
+        setStudents(data);
+      } catch (error) {
+        console.error("Không thể tải danh sách sinh viên:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchStudents();
+  }, []);
 
   // Tính toán statistics
   const stats = useMemo(() => {
@@ -78,15 +126,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
       <Sidebar />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
         <Header onSearch={setSearchTerm} />
 
-        {/* Content */}
         <main className="flex-1 p-6 overflow-auto">
           {/* Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
@@ -169,7 +214,6 @@ export default function Home() {
         </main>
       </div>
 
-      {/* Student Form Modal */}
       {isFormOpen && (
         <StudentForm
           student={editingStudent}
