@@ -57,17 +57,40 @@ export function createCrudController<
     @get(basePath)
     @response(200, {
       description: `Array of ${modelCtor.name} instances`,
-      content: {
-        'application/json': {
-          schema: {
-            type: 'array',
-            items: getModelSchemaRef(modelCtor, {includeRelations: true}),
-          },
-        },
-      },
     })
-    async find(@param.filter(modelCtor) filter?: Filter<T>): Promise<T[]> {
-      return this.repository.find(filter);
+    async find(
+      @param.query.string('filter') filterStr?: string,
+      @param.query.number('page') page: number = 1,
+      @param.query.number('limit') limit: number = 10,
+    ): Promise<object> {
+      let filter: Filter<T> = {};
+      if (filterStr) {
+        try {
+          filter = JSON.parse(filterStr);
+        } catch (e) {
+          console.error('Invalid filter JSON:', filterStr);
+        }
+      }
+
+      const skip = (page - 1) * limit;
+
+      const data = await this.repository.find({
+        ...filter,
+        skip,
+        limit,
+      });
+
+      const total = await this.repository.count(filter.where);
+
+      return {
+        data,
+        pagination: {
+          page,
+          limit,
+          total: total.count,
+          totalPages: Math.ceil(total.count / limit),
+        },
+      };
     }
 
     @get(`${basePath}/{id}`)

@@ -183,23 +183,6 @@ export class UserController extends BaseUserController {
   }
 
   @authenticate('jwt')
-  @get('/users')
-  @response(200, {
-    description: 'Array of User model instances',
-    content: {
-      'application/json': {
-        schema: {
-          type: 'array',
-          items: getModelSchemaRef(User, {includeRelations: true}),
-        },
-      },
-    },
-  })
-  async find(@param.filter(User) filter?: Filter<User>): Promise<User[]> {
-    return super.find(filter);
-  }
-
-  @authenticate('jwt')
   @get('/users/{id}')
   @response(200, {
     description: 'User model instance',
