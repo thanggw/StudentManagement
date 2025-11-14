@@ -13,7 +13,7 @@ export default function Header() {
   }, []);
   const handleProfileClick = () => {
     setShowDropdown(false);
-    router.push("/profile"); // Navigate đến profile
+    router.push("/profile");
   };
 
   const handleLogout = () => {
@@ -21,6 +21,13 @@ export default function Header() {
       auth.logout();
     }
   };
+  function decodeUnicode(str) {
+    try {
+      return decodeURIComponent(escape(str));
+    } catch {
+      return str;
+    }
+  }
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-10">
@@ -100,7 +107,7 @@ export default function Header() {
               </div>
               <div className="hidden md:block text-left">
                 <p className="text-sm font-semibold text-gray-800">
-                  {user?.name || "User"}
+                  {user?.name ? decodeUnicode(user.name) : "User"}
                 </p>
                 <p className="text-xs text-gray-500">
                   {user?.email || "user@example.com"}

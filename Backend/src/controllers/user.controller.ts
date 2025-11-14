@@ -131,7 +131,6 @@ export class UserController extends BaseUserController {
     return {token};
   }
 
-  // QUAN TRỌNG: Định nghĩa route /me TRƯỚC các route generic
   @authenticate('jwt')
   @get('/users/me')
   @response(200, {

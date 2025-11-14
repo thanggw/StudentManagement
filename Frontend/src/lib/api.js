@@ -11,6 +11,22 @@ export async function getStudents() {
   }
 }
 
+export async function searchStudents(params = {}) {
+  const { major, status, page = 1, limit = 100 } = params;
+  let url = `${API_BASE}/students/search?page=${page}&limit=${limit}`;
+  if (major && major !== "all") url += `&major=${encodeURIComponent(major)}`;
+  if (status && status !== "all")
+    url += `&status=${encodeURIComponent(status)}`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Lỗi tìm kiếm sinh viên");
+    return await response.json(); // {data: [...], total, page, limit}
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+}
+
 export async function createStudent(studentData) {
   try {
     const response = await fetch(`${API_BASE}/students`, {
