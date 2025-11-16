@@ -11,43 +11,42 @@ import {
 } from "@/lib/api";
 import { UserWithDates } from "@/lib/type";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Option } = Select;
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserWithDates[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithDates | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
+  const { isAdmin } = useAuth(true);
+  const pageSize = 10;
 
-  // Kiểm tra admin + load users
+  const loadData = async (page = 1) => {
+    setLoading(true);
+    try {
+      const skip = (page - 1) * pageSize;
+      const { data, total } = await getAllUsers(undefined, skip, pageSize);
+      setUsers(data.filter((u) => !u.deleted));
+      setTotal(total);
+    } catch (error: any) {
+      message.error(error.message || "Failed to load users");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const currentUser = await getCurrentUser();
-        if (!currentUser.roles?.includes("admin")) {
-          message.warning("Access denied");
-          router.push("/dashboard/students");
-          return;
-        }
-
-        const data = await getAllUsers();
-        setUsers(data.filter((u) => !u.deleted));
-      } catch (error: any) {
-        message.error(error.message || "Failed to load users");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
+    loadData(1);
   }, [router]);
 
   const handleDelete = async (id: string) => {
     try {
       await deleteUser(id);
-      setUsers(users.filter((u) => u.id !== id));
+      loadData(1);
       message.success("User deleted");
     } catch (error: any) {
       message.error(error.message);
@@ -67,16 +66,8 @@ export default function UsersPage() {
   };
 
   const columns = [
-    {
-      title: "Name",
-      dataIndex: "name",
-      key: "name",
-    },
-    {
-      title: "Email",
-      dataIndex: "email",
-      key: "email",
-    },
+    { title: "Name", dataIndex: "name", key: "name" },
+    { title: "Email", dataIndex: "email", key: "email" },
     {
       title: "Role",
       key: "roles",
@@ -135,10 +126,14 @@ export default function UsersPage() {
         columns={columns}
         rowKey="id"
         loading={loading}
-        pagination={{ pageSize: 10 }}
+        pagination={{
+          total,
+          pageSize,
+          showSizeChanger: false,
+          onChange: (page) => loadData(page),
+        }}
       />
 
-      {/* Modal chỉnh sửa role */}
       <Modal
         title="Edit User Role"
         open={isModalOpen}

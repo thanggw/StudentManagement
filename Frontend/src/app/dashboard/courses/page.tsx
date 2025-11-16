@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Table, Button, Modal, Form, Input, message } from "antd";
+import { Table, Button, Modal, Form, Input, message, Tag } from "antd";
+import { EditOutlined, DeleteOutlined, BookOutlined } from "@ant-design/icons";
 import {
   getCourses,
   createCourse,
@@ -9,48 +10,46 @@ import {
   deleteCourse,
   getCurrentUser,
 } from "@/lib/api";
+import { Course } from "@/lib/type";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
-interface Course {
-  id: string;
-  courseCode: string;
-  courseName: string;
-  credits: number;
-  description?: string;
-}
+const { TextArea } = Input;
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [form] = Form.useForm();
+  const { isAdmin } = useAuth(true);
   const router = useRouter();
+  const pageSize = 10;
+
+  // Kiểm tra admin + load dữ liệu
+  const loadData = async (page = 1) => {
+    setLoading(true);
+    try {
+      const skip = (page - 1) * pageSize;
+      const { data, total } = await getCourses(undefined, skip, pageSize);
+      setCourses(data);
+      setTotal(total);
+    } catch (error: any) {
+      message.error(error.message || "Failed to load courses");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const user = await getCurrentUser();
-        if (!user.roles?.includes("admin")) {
-          message.warning("Access denied. Redirecting...");
-          router.push("/dashboard/students");
-          return;
-        }
-
-        const response = await getCourses();
-        setCourses(response || []);
-      } catch (error) {
-        message.error("Failed to load courses");
-        router.push("/dashboard/students");
-      }
-    };
-
-    loadData();
+    loadData(1);
   }, [router]);
 
   const showModal = (course?: Course) => {
     setEditingCourse(course || null);
     form.setFieldsValue(course || {});
-    setIsModalVisible(true);
+    setIsModalOpen(true);
   };
 
   const handleOk = async () => {
@@ -61,23 +60,21 @@ export default function CoursesPage() {
       } else {
         await createCourse(values);
       }
-      setIsModalVisible(false);
-      const response = await getCourses();
-      setCourses(response.data || []);
+      setIsModalOpen(false);
+      loadData(1); // reload trang 1
       message.success("Operation successful");
-    } catch (error) {
-      message.error("Operation failed");
+    } catch (error: any) {
+      message.error(error.message || "Operation failed");
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await deleteCourse(id);
-      const response = await getCourses();
-      setCourses(response.data || []);
+      loadData(1);
       message.success("Course deleted");
-    } catch (error) {
-      message.error("Delete failed");
+    } catch (error: any) {
+      message.error(error.message || "Delete failed");
     }
   };
 
@@ -85,15 +82,28 @@ export default function CoursesPage() {
     { title: "Course Code", dataIndex: "courseCode", key: "courseCode" },
     { title: "Course Name", dataIndex: "courseName", key: "courseName" },
     { title: "Credits", dataIndex: "credits", key: "credits" },
-    { title: "Description", dataIndex: "description", key: "description" },
+    {
+      title: "Description",
+      dataIndex: "description",
+      key: "description",
+      render: (text: string) => text || <Tag color="gray">None</Tag>,
+    },
     {
       title: "Actions",
       key: "actions",
       render: (_: any, record: Course) => (
         <>
-          <Button onClick={() => showModal(record)}>Edit</Button>
           <Button
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => showModal(record)}
+          >
+            Edit
+          </Button>
+          <Button
+            size="small"
             danger
+            icon={<DeleteOutlined />}
             onClick={() => handleDelete(record.id)}
             style={{ marginLeft: 8 }}
           >
@@ -106,19 +116,33 @@ export default function CoursesPage() {
 
   return (
     <div>
-      <Button
-        type="primary"
-        onClick={() => showModal()}
-        style={{ marginBottom: 16 }}
-      >
-        Add Course
-      </Button>
-      <Table dataSource={courses} columns={columns} rowKey="id" />
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <BookOutlined /> Courses Management
+        </h2>
+        <Button type="primary" onClick={() => showModal()}>
+          Add Course
+        </Button>
+      </div>
+
+      <Table
+        dataSource={courses}
+        columns={columns}
+        rowKey="id"
+        loading={loading}
+        pagination={{
+          total,
+          pageSize,
+          showSizeChanger: false,
+          onChange: (page) => loadData(page),
+        }}
+      />
+
       <Modal
         title={editingCourse ? "Edit Course" : "Add Course"}
-        open={isModalVisible}
+        open={isModalOpen}
         onOk={handleOk}
-        onCancel={() => setIsModalVisible(false)}
+        onCancel={() => setIsModalOpen(false)}
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -143,7 +167,7 @@ export default function CoursesPage() {
             <Input type="number" />
           </Form.Item>
           <Form.Item name="description" label="Description">
-            <Input.TextArea />
+            <TextArea rows={3} />
           </Form.Item>
         </Form>
       </Modal>

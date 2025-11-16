@@ -1,8 +1,9 @@
+import { Roles } from "./constants";
 export interface User {
   id: string;
   name: string;
   email: string;
-  roles: string[];
+  roles: Roles[];
 }
 export interface UserWithDates extends User {
   createdAt: string;

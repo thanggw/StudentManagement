@@ -57,12 +57,23 @@ export function createCrudController<
     @get(basePath)
     @response(200, {
       description: `Array of ${modelCtor.name} instances`,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              data: {type: 'array', items: getModelSchemaRef(modelCtor)},
+              total: {type: 'integer'},
+            },
+          },
+        },
+      },
     })
     async find(
       @param.query.string('filter') filterStr?: string,
-      @param.query.number('page') page: number = 1,
-      @param.query.number('limit') limit: number = 10,
-    ): Promise<object> {
+      @param.query.number('skip') skip = 0,
+      @param.query.number('limit') limit = 10,
+    ): Promise<{data: T[]; total: number}> {
       let filter: Filter<T> = {};
       if (filterStr) {
         try {
@@ -72,25 +83,17 @@ export function createCrudController<
         }
       }
 
-      const skip = (page - 1) * limit;
-
-      const data = await this.repository.find({
+      const finalFilter: Filter<T> = {
         ...filter,
         skip,
         limit,
-      });
-
-      const total = await this.repository.count(filter.where);
-
-      return {
-        data,
-        pagination: {
-          page,
-          limit,
-          total: total.count,
-          totalPages: Math.ceil(total.count / limit),
-        },
       };
+
+      const data = await this.repository.find(finalFilter);
+      const totalResult = await this.repository.count(filter.where);
+      const total = totalResult.count;
+
+      return {data, total};
     }
 
     @get(`${basePath}/{id}`)

@@ -1,32 +1,20 @@
 "use client";
 
 import { Layout, Menu } from "antd";
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/api";
 import {
   UserOutlined,
   BookOutlined,
   ProfileOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
+import { useAuth } from "@/hooks/useAuth";
+import { Roles } from "@/lib/constants";
 
 const { Sider } = Layout;
 
 export default function Sidebar() {
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const user = await getCurrentUser();
-        setIsAdmin(user.roles?.includes("admin") || false);
-      } catch (error) {
-        console.error("Failed to fetch user");
-      }
-    };
-    fetchUser();
-  }, []);
+  const { isAdmin } = useAuth();
 
   const menuItems = [
     {

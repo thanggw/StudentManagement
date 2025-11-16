@@ -1,51 +1,51 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Table, Button, Modal, Form, Input, message } from "antd";
+import { Table, Button, Modal, Form, Input, message, Tag } from "antd";
+import { EditOutlined, DeleteOutlined, UserOutlined } from "@ant-design/icons";
 import {
   getStudents,
   createStudent,
   updateStudent,
   deleteStudent,
 } from "@/lib/api";
-
-interface Student {
-  id: string;
-  studentCode: string;
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  major: string;
-  gpa: number;
-  admissionYear: number;
-  status: string;
-}
+import { Student } from "@/lib/type";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [form] = Form.useForm();
+  const { user, isAdmin } = useAuth();
+  const pageSize = 10;
 
-  // Tách logic fetch vào trong useEffect
+  // Load data với skip & limit
+  const loadData = async (page = 1) => {
+    setLoading(true);
+    try {
+      const skip = (page - 1) * pageSize;
+      const { data, total } = await getStudents(undefined, skip, pageSize);
+      setStudents(data);
+      setTotal(total);
+    } catch (error: any) {
+      message.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load lần đầu
   useEffect(() => {
-    const loadStudents = async () => {
-      try {
-        const response = await getStudents();
-        setStudents(response || []);
-      } catch (error) {
-        message.error("Failed to fetch students");
-        setStudents([]);
-      }
-    };
-
-    loadStudents();
+    loadData(1);
   }, []);
 
   const showModal = (student?: Student) => {
     setEditingStudent(student || null);
     form.setFieldsValue(student || {});
-    setIsModalVisible(true);
+    setIsModalOpen(true);
   };
 
   const handleOk = async () => {
@@ -56,24 +56,21 @@ export default function StudentsPage() {
       } else {
         await createStudent(values);
       }
-      setIsModalVisible(false);
-      // Refresh data
-      const response = await getStudents();
-      setStudents(response.data || []);
+      setIsModalOpen(false);
+      loadData(1); // reload trang 1
       message.success("Operation successful");
-    } catch (error) {
-      message.error("Operation failed");
+    } catch (error: any) {
+      message.error(error.message || "Operation failed");
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await deleteStudent(id);
-      const response = await getStudents();
-      setStudents(response.data || []);
+      loadData(1);
       message.success("Student deleted");
-    } catch (error) {
-      message.error("Delete failed");
+    } catch (error: any) {
+      message.error(error.message || "Delete failed");
     }
   };
 
@@ -88,16 +85,42 @@ export default function StudentsPage() {
       title: "Admission Year",
       dataIndex: "admissionYear",
       key: "admissionYear",
+      render: (year: number) => year || <Tag color="gray">N/A</Tag>,
     },
-    { title: "Status", dataIndex: "status", key: "status" },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      render: (status: string) => (
+        <Tag
+          color={
+            status === "active"
+              ? "green"
+              : status === "inactive"
+              ? "red"
+              : "orange"
+          }
+        >
+          {status}
+        </Tag>
+      ),
+    },
     {
       title: "Actions",
       key: "actions",
       render: (_: any, record: Student) => (
         <>
-          <Button onClick={() => showModal(record)}>Edit</Button>
           <Button
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => showModal(record)}
+          >
+            Edit
+          </Button>
+          <Button
+            size="small"
             danger
+            icon={<DeleteOutlined />}
             onClick={() => handleDelete(record.id)}
             style={{ marginLeft: 8 }}
           >
@@ -110,24 +133,33 @@ export default function StudentsPage() {
 
   return (
     <div>
-      <Button
-        type="primary"
-        onClick={() => showModal()}
-        style={{ marginBottom: 16 }}
-      >
-        Add Student
-      </Button>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <UserOutlined /> Students Management
+        </h2>
+        <Button type="primary" onClick={() => showModal()}>
+          Add Student
+        </Button>
+      </div>
+
       <Table
         dataSource={students}
         columns={columns}
         rowKey="id"
-        locale={{ emptyText: "No students found" }}
+        loading={loading}
+        pagination={{
+          total,
+          pageSize,
+          showSizeChanger: false,
+          onChange: (page) => loadData(page),
+        }}
       />
+
       <Modal
         title={editingStudent ? "Edit Student" : "Add Student"}
-        open={isModalVisible}
+        open={isModalOpen}
         onOk={handleOk}
-        onCancel={() => setIsModalVisible(false)}
+        onCancel={() => setIsModalOpen(false)}
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -144,7 +176,11 @@ export default function StudentsPage() {
           >
             <Input />
           </Form.Item>
-          <Form.Item name="email" label="Email" rules={[{ required: true }]}>
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[{ required: true, type: "email" }]}
+          >
             <Input />
           </Form.Item>
           <Form.Item
@@ -157,11 +193,19 @@ export default function StudentsPage() {
           <Form.Item name="major" label="Major" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="gpa" label="GPA" rules={[{ required: true }]}>
-            <Input type="number" />
+          <Form.Item
+            name="gpa"
+            label="GPA"
+            rules={[{ required: true, type: "number", min: 0, max: 4 }]}
+          >
+            <Input type="number" step="0.1" />
           </Form.Item>
           <Form.Item name="admissionYear" label="Admission Year">
-            <Input type="number" />
+            <Input
+              type="number"
+              min={1900}
+              max={new Date().getFullYear() + 5}
+            />
           </Form.Item>
           <Form.Item name="status" label="Status" rules={[{ required: true }]}>
             <Input />

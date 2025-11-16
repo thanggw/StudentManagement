@@ -1,4 +1,9 @@
-import { User, UserWithDates } from "./type";
+"use client";
+
+import { User, UserWithDates, Course, Student } from "@/lib/type";
+import { store } from "@/store";
+import { setUser } from "@/store/authSlice";
+
 const API_BASE_URL = "http://127.0.0.1:8080";
 
 const getHeaders = () => {
@@ -9,17 +14,53 @@ const getHeaders = () => {
   };
 };
 
+const apiRequest = async <T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const config: RequestInit = {
+    ...options,
+    headers: {
+      ...getHeaders(),
+      ...options.headers,
+    },
+  };
+
+  const response = await fetch(url, config);
+
+  if (!response.ok) {
+    let errorMessage = "Request failed";
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.message || errorMessage;
+    } catch {
+      // Không parse được JSON
+    }
+    throw new Error(errorMessage);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json();
+};
+
 export const login = async (credentials: {
   email: string;
   password: string;
 }) => {
-  const response = await fetch(`${API_BASE_URL}/users/login`, {
+  const { token } = await apiRequest<{ token: string }>("/users/login", {
     method: "POST",
-    headers: getHeaders(),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(credentials),
   });
-  if (!response.ok) throw new Error("Login failed");
-  return response.json();
+
+  localStorage.setItem("token", token);
+  const user = await getCurrentUser();
+  store.dispatch(setUser(user));
+  return { token, user };
 };
 
 export const signup = async (userData: {
@@ -27,138 +68,109 @@ export const signup = async (userData: {
   password: string;
   name: string;
 }) => {
-  const response = await fetch(`${API_BASE_URL}/users/signup`, {
+  return apiRequest("/users/signup", {
     method: "POST",
-    headers: getHeaders(),
     body: JSON.stringify(userData),
   });
-  if (!response.ok) throw new Error("Signup failed");
-  return response.json();
 };
 
-export const getCurrentUser = async () => {
-  const response = await fetch(`${API_BASE_URL}/users/me`, {
-    headers: getHeaders(),
-  });
-  if (!response.ok) throw new Error("Failed to get user");
-  return response.json();
+export const getCurrentUser = async (): Promise<User> => {
+  return apiRequest<User>("/users/me");
 };
 
-export const getStudents = async () => {
-  const response = await fetch(`${API_BASE_URL}/students`, {
-    headers: getHeaders(),
-  });
-  if (!response.ok) throw new Error("Failed to get students");
-  return response.json();
-};
-
-export const createStudent = async (data: any) => {
-  const response = await fetch(`${API_BASE_URL}/students`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) throw new Error("Failed to create student");
-  return response.json();
-};
-
-export const updateStudent = async (id: string, data: any) => {
-  const response = await fetch(`${API_BASE_URL}/students/${id}`, {
+export const updateCurrentUser = async (data: Partial<User>) => {
+  return apiRequest<User>("/users/me", {
     method: "PATCH",
-    headers: getHeaders(),
     body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error("Failed to update student");
+};
+
+export const getStudents = async (
+  filter?: string,
+  skip = 0,
+  limit = 10
+): Promise<{ data: Student[]; total: number }> => {
+  const params = new URLSearchParams();
+  if (filter) params.set("filter", filter);
+  params.set("skip", skip.toString());
+  params.set("limit", limit.toString());
+
+  return apiRequest(`/students?${params.toString()}`);
+};
+
+export const createStudent = async (data: Omit<Student, "id">) => {
+  return apiRequest<Student>("/students", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateStudent = async (id: string, data: Partial<Student>) => {
+  await apiRequest(`/students/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 };
 
 export const deleteStudent = async (id: string) => {
-  const response = await fetch(`${API_BASE_URL}/students/${id}`, {
-    method: "DELETE",
-    headers: getHeaders(),
-  });
-  if (!response.ok) throw new Error("Failed to delete student");
+  await apiRequest(`/students/${id}`, { method: "DELETE" });
 };
 
-export const getCourses = async () => {
-  const response = await fetch(`${API_BASE_URL}/courses`, {
-    headers: getHeaders(),
-  });
-  if (!response.ok) throw new Error("Failed to get courses");
-  return response.json();
+export const getCourses = async (
+  filter?: string,
+  skip = 0,
+  limit = 10
+): Promise<{ data: Course[]; total: number }> => {
+  const params = new URLSearchParams();
+  if (filter) params.set("filter", filter);
+  params.set("skip", skip.toString());
+  params.set("limit", limit.toString());
+
+  return apiRequest(`/courses?${params.toString()}`);
 };
 
-export const createCourse = async (data: any) => {
-  const response = await fetch(`${API_BASE_URL}/courses`, {
+export const createCourse = async (data: Omit<Course, "id">) => {
+  return apiRequest<Course>("/courses", {
     method: "POST",
-    headers: getHeaders(),
     body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error("Failed to create course");
-  return response.json();
 };
 
-export const updateCourse = async (id: string, data: any) => {
-  const response = await fetch(`${API_BASE_URL}/courses/${id}`, {
+export const updateCourse = async (id: string, data: Partial<Course>) => {
+  await apiRequest(`/courses/${id}`, {
     method: "PATCH",
-    headers: getHeaders(),
     body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error("Failed to update course");
 };
 
 export const deleteCourse = async (id: string) => {
-  const response = await fetch(`${API_BASE_URL}/courses/${id}`, {
-    method: "DELETE",
-    headers: getHeaders(),
-  });
-  if (!response.ok) throw new Error("Failed to delete course");
+  await apiRequest(`/courses/${id}`, { method: "DELETE" });
 };
-export const updateCurrentUser = async (data: Partial<User>) => {
-  const response = await fetch(`${API_BASE_URL}/users/me`, {
-    method: "PATCH",
-    headers: getHeaders(),
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to update profile");
-  }
-  return response.json();
-};
-export const getAllUsers = async (): Promise<UserWithDates[]> => {
-  const response = await fetch(`${API_BASE_URL}/users`, {
-    headers: getHeaders(),
-  });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || "Failed to fetch users");
-  }
-  return response.json();
+
+// USERS (ADMIN)
+export const getAllUsers = async (
+  filter?: string,
+  skip = 0,
+  limit = 10
+): Promise<{ data: UserWithDates[]; total: number }> => {
+  const params = new URLSearchParams();
+  if (filter) params.set("filter", filter);
+  params.set("skip", skip.toString());
+  params.set("limit", limit.toString());
+
+  return apiRequest(`/users?${params.toString()}`);
 };
 
 export const deleteUser = async (id: string): Promise<void> => {
-  const response = await fetch(`${API_BASE_URL}/users/${id}`, {
-    method: "DELETE",
-    headers: getHeaders(),
-  });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || "Failed to delete user");
-  }
+  await apiRequest(`/users/${id}`, { method: "DELETE" });
 };
 
 export const updateUserRole = async (
   id: string,
   roles: string[]
 ): Promise<UserWithDates> => {
-  const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+  return apiRequest<UserWithDates>(`/users/${id}`, {
     method: "PATCH",
-    headers: getHeaders(),
     body: JSON.stringify({ roles }),
   });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || "Failed to update role");
-  }
-  return response.json();
 };
