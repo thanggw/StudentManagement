@@ -1,56 +1,38 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Table, Button, Modal, Form, Input, message } from "antd";
-import {
-  getCourses,
-  createCourse,
-  updateCourse,
-  deleteCourse,
-  getCurrentUser,
-} from "@/lib/api";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Table, Button, Modal, Form, Input, message, Tag } from "antd";
+import { EditOutlined, DeleteOutlined, BookOutlined } from "@ant-design/icons";
+import { createCourse, updateCourse, deleteCourse } from "@/lib/api";
+import { Course } from "@/lib/type";
+import { useAuth } from "@/hooks/useAuth";
+import { usePaginatedData } from "@/hooks/usePaginatedData";
+import { getCourses } from "@/lib/api";
 
-interface Course {
-  id: string;
-  courseCode: string;
-  courseName: string;
-  credits: number;
-  description?: string;
-}
+const { TextArea } = Input;
 
 export default function CoursesPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  useAuth(true);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [form] = Form.useForm();
-  const router = useRouter();
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const user = await getCurrentUser();
-        if (!user.roles?.includes("admin")) {
-          message.warning("Access denied. Redirecting...");
-          router.push("/dashboard/students");
-          return;
-        }
-
-        const response = await getCourses();
-        setCourses(response || []);
-      } catch (error) {
-        message.error("Failed to load courses");
-        router.push("/dashboard/students");
-      }
-    };
-
-    loadData();
-  }, [router]);
+  const {
+    data: courses,
+    total,
+    loading,
+    loadData,
+    refetchPage1,
+  } = usePaginatedData<Course>({
+    fetchFn: getCourses,
+    pageSize: 10,
+  });
 
   const showModal = (course?: Course) => {
     setEditingCourse(course || null);
     form.setFieldsValue(course || {});
-    setIsModalVisible(true);
+    setIsModalOpen(true);
   };
 
   const handleOk = async () => {
@@ -61,23 +43,21 @@ export default function CoursesPage() {
       } else {
         await createCourse(values);
       }
-      setIsModalVisible(false);
-      const response = await getCourses();
-      setCourses(response.data || []);
+      setIsModalOpen(false);
+      refetchPage1();
       message.success("Operation successful");
-    } catch (error) {
-      message.error("Operation failed");
+    } catch (error: any) {
+      message.error(error.message || "Operation failed");
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await deleteCourse(id);
-      const response = await getCourses();
-      setCourses(response.data || []);
+      refetchPage1();
       message.success("Course deleted");
-    } catch (error) {
-      message.error("Delete failed");
+    } catch (error: any) {
+      message.error(error.message || "Delete failed");
     }
   };
 
@@ -85,15 +65,28 @@ export default function CoursesPage() {
     { title: "Course Code", dataIndex: "courseCode", key: "courseCode" },
     { title: "Course Name", dataIndex: "courseName", key: "courseName" },
     { title: "Credits", dataIndex: "credits", key: "credits" },
-    { title: "Description", dataIndex: "description", key: "description" },
+    {
+      title: "Description",
+      dataIndex: "description",
+      key: "description",
+      render: (text: string) => text || <Tag color="gray">None</Tag>,
+    },
     {
       title: "Actions",
       key: "actions",
       render: (_: any, record: Course) => (
         <>
-          <Button onClick={() => showModal(record)}>Edit</Button>
           <Button
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => showModal(record)}
+          >
+            Edit
+          </Button>
+          <Button
+            size="small"
             danger
+            icon={<DeleteOutlined />}
             onClick={() => handleDelete(record.id)}
             style={{ marginLeft: 8 }}
           >
@@ -106,19 +99,33 @@ export default function CoursesPage() {
 
   return (
     <div>
-      <Button
-        type="primary"
-        onClick={() => showModal()}
-        style={{ marginBottom: 16 }}
-      >
-        Add Course
-      </Button>
-      <Table dataSource={courses} columns={columns} rowKey="id" />
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <BookOutlined /> Courses Management
+        </h2>
+        <Button type="primary" onClick={() => showModal()}>
+          Add Course
+        </Button>
+      </div>
+
+      <Table
+        dataSource={courses}
+        columns={columns}
+        rowKey="id"
+        loading={loading}
+        pagination={{
+          total,
+          pageSize: 10,
+          showSizeChanger: false,
+          onChange: loadData,
+        }}
+      />
+
       <Modal
         title={editingCourse ? "Edit Course" : "Add Course"}
-        open={isModalVisible}
+        open={isModalOpen}
         onOk={handleOk}
-        onCancel={() => setIsModalVisible(false)}
+        onCancel={() => setIsModalOpen(false)}
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -143,7 +150,7 @@ export default function CoursesPage() {
             <Input type="number" />
           </Form.Item>
           <Form.Item name="description" label="Description">
-            <Input.TextArea />
+            <TextArea rows={3} />
           </Form.Item>
         </Form>
       </Modal>

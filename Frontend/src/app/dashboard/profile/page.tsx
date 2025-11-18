@@ -1,38 +1,36 @@
+// File: app/dashboard/profile/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import { Card, Avatar, Form, Input, Button, message, Spin } from "antd";
 import { UserOutlined, EditOutlined } from "@ant-design/icons";
-import { getCurrentUser, updateCurrentUser } from "@/lib/api";
+import { updateCurrentUser } from "@/lib/api";
 import { User } from "@/lib/type";
+import { useAuth } from "@/hooks/useAuth";
+import { useDispatch } from "react-redux";
+import { setUser } from "@/store/authSlice";
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user: reduxUser } = useAuth(); // Chỉ lấy user từ Redux
   const [editing, setEditing] = useState(false);
   const [form] = Form.useForm();
+  const dispatch = useDispatch();
 
+  // Đồng bộ form khi reduxUser thay đổi
   useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const data = await getCurrentUser();
-        setUser(data);
-        form.setFieldsValue(data);
-      } catch (error) {
-        message.error("Failed to load profile");
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadUser();
-  }, [form]);
+    if (reduxUser) {
+      form.setFieldsValue(reduxUser);
+    }
+  }, [reduxUser, form]);
 
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
-      await updateCurrentUser(values);
-      const updated = await getCurrentUser();
-      setUser(updated);
+      const updated = await updateCurrentUser(values);
+
+      // CẬP NHẬT REDUX
+      dispatch(setUser(updated));
+
       setEditing(false);
       message.success("Profile updated successfully");
     } catch (error: any) {
@@ -40,16 +38,12 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) {
+  if (!reduxUser) {
     return (
       <div className="flex justify-center items-center h-64">
         <Spin size="large" />
       </div>
     );
-  }
-
-  if (!user) {
-    return <div className="text-center text-red-500">User not found</div>;
   }
 
   return (
@@ -59,8 +53,8 @@ export default function ProfilePage() {
           <div className="flex items-center gap-3">
             <Avatar size={48} icon={<UserOutlined />} />
             <div>
-              <h2 className="text-xl font-semibold m-0">{user.name}</h2>
-              <p className="text-gray-500 m-0">{user.email}</p>
+              <h2 className="text-xl font-semibold m-0">{reduxUser.name}</h2>
+              <p className="text-gray-500 m-0">{reduxUser.email}</p>
             </div>
           </div>
         }
@@ -81,17 +75,14 @@ export default function ProfilePage() {
             <Form.Item
               name="name"
               label="Full Name"
-              rules={[{ required: true, message: "Please enter your name" }]}
+              rules={[{ required: true }]}
             >
               <Input />
             </Form.Item>
             <Form.Item
               name="email"
               label="Email"
-              rules={[
-                { required: true, message: "Please enter your email" },
-                { type: "email", message: "Invalid email format" },
-              ]}
+              rules={[{ required: true, type: "email" }]}
             >
               <Input />
             </Form.Item>
@@ -115,11 +106,11 @@ export default function ProfilePage() {
             <div>
               <strong>Role:</strong>{" "}
               <span className="capitalize">
-                {user.roles?.join(", ") || "user"}
+                {reduxUser.roles?.join(", ") || "user"}
               </span>
             </div>
             <div>
-              <strong>User ID:</strong> <code>{user.id}</code>
+              <strong>User ID:</strong> <code>{reduxUser.id}</code>
             </div>
           </div>
         )}
