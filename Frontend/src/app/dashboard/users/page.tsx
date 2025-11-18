@@ -1,67 +1,51 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Table, Button, Modal, Select, message, Tag, Popconfirm } from "antd";
 import { EditOutlined, DeleteOutlined, TeamOutlined } from "@ant-design/icons";
-import {
-  getAllUsers,
-  deleteUser,
-  updateUserRole,
-  getCurrentUser,
-} from "@/lib/api";
+import { deleteUser, updateUserRole } from "@/lib/api";
 import { UserWithDates } from "@/lib/type";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { usePaginatedData } from "@/hooks/usePaginatedData";
+import { getAllUsers } from "@/lib/api";
+import { Roles } from "@/lib/constants";
 
 const { Option } = Select;
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<UserWithDates[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
+  useAuth(true);
+
   const [editingUser, setEditingUser] = useState<UserWithDates | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const router = useRouter();
-  const { isAdmin } = useAuth(true);
-  const pageSize = 10;
 
-  const loadData = async (page = 1) => {
-    setLoading(true);
-    try {
-      const skip = (page - 1) * pageSize;
-      const { data, total } = await getAllUsers(undefined, skip, pageSize);
-      setUsers(data.filter((u) => !u.deleted));
-      setTotal(total);
-    } catch (error: any) {
-      message.error(error.message || "Failed to load users");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data: users,
+    total,
+    loading,
+    loadData,
+    refetchPage1,
+  } = usePaginatedData<UserWithDates>({
+    fetchFn: getAllUsers,
+    pageSize: 10,
+  });
 
-  useEffect(() => {
-    loadData(1);
-  }, [router]);
+  const filteredUsers = users.filter((u) => !u.deleted);
 
   const handleDelete = async (id: string) => {
-    try {
-      await deleteUser(id);
-      loadData(1);
-      message.success("User deleted");
-    } catch (error: any) {
-      message.error(error.message);
-    }
+    await deleteUser(id);
+    refetchPage1();
+    message.success("User deleted");
   };
 
   const handleRoleChange = async () => {
     if (!editingUser) return;
     try {
-      const updated = await updateUserRole(editingUser.id, editingUser.roles);
-      setUsers(users.map((u) => (u.id === updated.id ? updated : u)));
+      await updateUserRole(editingUser.id, editingUser.roles);
+      refetchPage1();
       setIsModalOpen(false);
       message.success("Role updated");
     } catch (error: any) {
-      message.error(error.message);
+      message.error(error.message || "Failed to update role");
     }
   };
 
@@ -72,8 +56,8 @@ export default function UsersPage() {
       title: "Role",
       key: "roles",
       render: (_: any, record: UserWithDates) => (
-        <Tag color={record.roles.includes("admin") ? "red" : "blue"}>
-          {record.roles.join(", ")}
+        <Tag color={record.roles.includes(Roles.ADMIN) ? "red" : "blue"}>
+          {record.roles.map((r) => r.toUpperCase()).join(", ")}
         </Tag>
       ),
     },
@@ -122,15 +106,15 @@ export default function UsersPage() {
       </div>
 
       <Table
-        dataSource={users}
+        dataSource={filteredUsers}
         columns={columns}
         rowKey="id"
         loading={loading}
         pagination={{
           total,
-          pageSize,
+          pageSize: 10,
           showSizeChanger: false,
-          onChange: (page) => loadData(page),
+          onChange: loadData,
         }}
       />
 
@@ -140,20 +124,18 @@ export default function UsersPage() {
         onOk={handleRoleChange}
         onCancel={() => setIsModalOpen(false)}
         okText="Save"
-        cancelText="Cancel"
       >
         {editingUser && (
           <Select
             mode="multiple"
             value={editingUser.roles}
-            onChange={(values) => {
+            onChange={(values: Roles[]) => {
               setEditingUser({ ...editingUser, roles: values });
             }}
             style={{ width: "100%" }}
-            placeholder="Select roles"
           >
-            <Option value="user">User</Option>
-            <Option value="admin">Admin</Option>
+            <Option value={Roles.USER}>User</Option>
+            <Option value={Roles.ADMIN}>Admin</Option>
           </Select>
         )}
       </Modal>

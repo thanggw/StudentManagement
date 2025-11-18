@@ -1,46 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Table, Button, Modal, Form, Input, message, Tag } from "antd";
 import { EditOutlined, DeleteOutlined, UserOutlined } from "@ant-design/icons";
-import {
-  getStudents,
-  createStudent,
-  updateStudent,
-  deleteStudent,
-} from "@/lib/api";
+import { createStudent, updateStudent, deleteStudent } from "@/lib/api";
 import { Student } from "@/lib/type";
 import { useAuth } from "@/hooks/useAuth";
+import { usePaginatedData } from "@/hooks/usePaginatedData";
+import { getStudents } from "@/lib/api";
 
 export default function StudentsPage() {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [form] = Form.useForm();
-  const { user, isAdmin } = useAuth();
-  const pageSize = 10;
+  useAuth();
 
-  // Load data với skip & limit
-  const loadData = async (page = 1) => {
-    setLoading(true);
-    try {
-      const skip = (page - 1) * pageSize;
-      const { data, total } = await getStudents(undefined, skip, pageSize);
-      setStudents(data);
-      setTotal(total);
-    } catch (error: any) {
-      message.error(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Load lần đầu
-  useEffect(() => {
-    loadData(1);
-  }, []);
+  const {
+    data: students,
+    total,
+    loading,
+    currentPage,
+    pageSize,
+    loadData,
+    refetchPage1,
+  } = usePaginatedData<Student>({
+    fetchFn: getStudents,
+    pageSize: 10,
+  });
 
   const showModal = (student?: Student) => {
     setEditingStudent(student || null);
@@ -57,7 +43,7 @@ export default function StudentsPage() {
         await createStudent(values);
       }
       setIsModalOpen(false);
-      loadData(1); // reload trang 1
+      refetchPage1();
       message.success("Operation successful");
     } catch (error: any) {
       message.error(error.message || "Operation failed");
@@ -67,7 +53,7 @@ export default function StudentsPage() {
   const handleDelete = async (id: string) => {
     try {
       await deleteStudent(id);
-      loadData(1);
+      refetchPage1();
       message.success("Student deleted");
     } catch (error: any) {
       message.error(error.message || "Delete failed");
@@ -148,10 +134,11 @@ export default function StudentsPage() {
         rowKey="id"
         loading={loading}
         pagination={{
+          current: currentPage,
           total,
           pageSize,
           showSizeChanger: false,
-          onChange: (page) => loadData(page),
+          onChange: loadData,
         }}
       />
 

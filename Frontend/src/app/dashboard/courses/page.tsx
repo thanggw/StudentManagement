@@ -1,50 +1,33 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Table, Button, Modal, Form, Input, message, Tag } from "antd";
 import { EditOutlined, DeleteOutlined, BookOutlined } from "@ant-design/icons";
-import {
-  getCourses,
-  createCourse,
-  updateCourse,
-  deleteCourse,
-  getCurrentUser,
-} from "@/lib/api";
+import { createCourse, updateCourse, deleteCourse } from "@/lib/api";
 import { Course } from "@/lib/type";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { usePaginatedData } from "@/hooks/usePaginatedData";
+import { getCourses } from "@/lib/api";
 
 const { TextArea } = Input;
 
 export default function CoursesPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
+  useAuth(true);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [form] = Form.useForm();
-  const { isAdmin } = useAuth(true);
-  const router = useRouter();
-  const pageSize = 10;
 
-  // Kiểm tra admin + load dữ liệu
-  const loadData = async (page = 1) => {
-    setLoading(true);
-    try {
-      const skip = (page - 1) * pageSize;
-      const { data, total } = await getCourses(undefined, skip, pageSize);
-      setCourses(data);
-      setTotal(total);
-    } catch (error: any) {
-      message.error(error.message || "Failed to load courses");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData(1);
-  }, [router]);
+  const {
+    data: courses,
+    total,
+    loading,
+    loadData,
+    refetchPage1,
+  } = usePaginatedData<Course>({
+    fetchFn: getCourses,
+    pageSize: 10,
+  });
 
   const showModal = (course?: Course) => {
     setEditingCourse(course || null);
@@ -61,7 +44,7 @@ export default function CoursesPage() {
         await createCourse(values);
       }
       setIsModalOpen(false);
-      loadData(1); // reload trang 1
+      refetchPage1();
       message.success("Operation successful");
     } catch (error: any) {
       message.error(error.message || "Operation failed");
@@ -71,7 +54,7 @@ export default function CoursesPage() {
   const handleDelete = async (id: string) => {
     try {
       await deleteCourse(id);
-      loadData(1);
+      refetchPage1();
       message.success("Course deleted");
     } catch (error: any) {
       message.error(error.message || "Delete failed");
@@ -132,9 +115,9 @@ export default function CoursesPage() {
         loading={loading}
         pagination={{
           total,
-          pageSize,
+          pageSize: 10,
           showSizeChanger: false,
-          onChange: (page) => loadData(page),
+          onChange: loadData,
         }}
       />
 
