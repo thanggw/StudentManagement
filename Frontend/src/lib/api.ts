@@ -6,6 +6,17 @@ import { setUser } from "@/store/authSlice";
 
 const API_BASE_URL = "http://127.0.0.1:8080";
 
+export const getAuthHeaders = (): Record<string, string> => {
+  const authToken = localStorage.getItem("token");
+
+  const headers: Record<string, string> = {};
+
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
+
+  return headers;
+};
 //url
 const apiRequest = async <T>(
   endpoint: string,
@@ -123,4 +134,45 @@ export const updateUserRole = async (id: string, roles: string[]) => {
     method: "PATCH",
     body: JSON.stringify({ roles }),
   });
+};
+
+export const getCourseById = async (id: string): Promise<Course> => {
+  const res = await fetch(`${API_BASE_URL}/courses/${id}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error("Không tải được khóa học");
+  return res.json();
+};
+
+export const getStudentsByCourse = async (
+  courseId: string
+): Promise<Student[]> => {
+  const res = await fetch(`${API_BASE_URL}/courses/${courseId}/students`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error("Không tải được danh sách sinh viên");
+  return res.json();
+};
+
+export const enrollCourse = async (data: {
+  studentId: string;
+  courseId: string;
+  semester: string;
+}) => {
+  const res = await fetch(`${API_BASE_URL}/enrollments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw {
+      message: error.error?.message || "Đăng ký thất bại",
+      status: res.status,
+    };
+  }
+  return res.json();
 };

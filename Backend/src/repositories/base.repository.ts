@@ -8,7 +8,7 @@ import {
   Count,
 } from '@loopback/repository';
 import {inject} from '@loopback/core';
-
+import {InclusionResolver} from '@loopback/repository';
 export abstract class BaseRepository<
   T extends Entity,
   ID,
@@ -57,5 +57,15 @@ export abstract class BaseRepository<
       this.count(filter?.where as Where<T>),
     ]);
     return {data, total: countResult.count, page, limit};
+  }
+  createInclusionResolver(
+    relationName: string,
+    targetRepo: any,
+  ): InclusionResolver<T, Entity> {
+    const resolver = this[relationName as keyof this];
+    if (typeof (resolver as any)?.inclusionResolver === 'function') {
+      return (resolver as any).inclusionResolver;
+    }
+    throw new Error(`No inclusion resolver found for relation ${relationName}`);
   }
 }
