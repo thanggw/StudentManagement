@@ -8,6 +8,8 @@ import {
   removeFromCart,
 } from "../cartSlice";
 import { RootState } from "..";
+import { apiRequest } from "@/lib/api";
+
 interface AddToCartAction {
   type: string;
   payload: { course: any };
@@ -16,27 +18,16 @@ interface RemoveFromCartAction {
   type: string;
   payload: string;
 }
+
 function* loadCartSaga(): Generator<any, void, any> {
   try {
     const user = yield select((state: RootState) => state.auth.user);
     if (!user) return;
 
-    const res = yield call(
-      fetch,
-      `${process.env.NEXT_PUBLIC_API_URL}/cart-items/student/${user.id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-      }
-    );
+    const data = yield call(apiRequest, `/cart-items/student/${user.id}`, {
+      method: "GET",
+    });
 
-    if (!res.ok) {
-      const error = yield res.json();
-      throw new Error(error.error?.message || "Không thể tải giỏ hàng");
-    }
-
-    const data = yield res.json();
     yield put(loadCartSuccess(data.items || []));
   } catch (err: any) {
     yield put(loadCartFailure(err.message || "Lỗi tải giỏ hàng"));
@@ -58,26 +49,13 @@ function* addToCartSaga(action: AddToCartAction): Generator<any, void, any> {
     const user = yield select((state: RootState) => state.auth.user);
     if (!user) throw new Error("Không tìm thấy người dùng");
 
-    const res = yield call(
-      fetch,
-      `${process.env.NEXT_PUBLIC_API_URL}/cart-items/add`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-        body: JSON.stringify({
-          studentId: user.id,
-          courseId: course.id,
-        }),
-      }
-    );
-
-    if (!res.ok) {
-      const error = yield res.json();
-      throw new Error(error.error?.message || "Thêm vào giỏ thất bại");
-    }
+    yield call(apiRequest, `/cart-items/add`, {
+      method: "POST",
+      body: JSON.stringify({
+        studentId: user.id,
+        courseId: course.id,
+      }),
+    });
 
     yield put(addToCartSuccess(course.id));
   } catch (err: any) {
@@ -94,26 +72,20 @@ function* removeFromCartSaga(
   action: RemoveFromCartAction
 ): Generator<any, void, any> {
   const cartItemId = action.payload;
+
+  // Optimistic remove
   yield put(removeFromCart(cartItemId));
 
   try {
-    yield call(
-      fetch,
-      `${process.env.NEXT_PUBLIC_API_URL}/cart-items/${cartItemId}`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-      }
-    );
+    // Sử dụng apiRequest
+    yield call(apiRequest, `/cart-items/${cartItemId}`, {
+      method: "DELETE",
+    });
   } catch (err) {
-    // Nếu xóa lỗi → reload giỏ hàng
     yield put({ type: "cart/loadRequest" });
   }
 }
 
-// Export với takeEvery/takeLatest
 export default function* cartSaga(): Generator<any, void, any> {
   yield takeLatest("cart/loadRequest", loadCartSaga);
   yield takeEvery("cart/addRequest", addToCartSaga);

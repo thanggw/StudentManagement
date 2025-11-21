@@ -18,12 +18,15 @@ export const getAuthHeaders = (): Record<string, string> => {
   return headers;
 };
 //url
-const apiRequest = async <T>(
+export const apiRequest = async <T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  authToken?: string
 ): Promise<T> => {
   const url = `${API_BASE_URL}${endpoint}`;
-  const token = localStorage.getItem("token");
+  const token =
+    authToken ??
+    (typeof window !== "undefined" ? localStorage.getItem("token") : null);
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -102,6 +105,7 @@ export const login = async (credentials: {
     body: JSON.stringify(credentials),
   });
   localStorage.setItem("token", token);
+  document.cookie = `token=${token}; path=/; max-age=604800`;
   const user = await getCurrentUser();
   store.dispatch(setUser(user));
   return { token, user };
@@ -134,24 +138,6 @@ export const updateUserRole = async (id: string, roles: string[]) => {
     method: "PATCH",
     body: JSON.stringify({ roles }),
   });
-};
-
-export const getCourseById = async (id: string): Promise<Course> => {
-  const res = await fetch(`${API_BASE_URL}/courses/${id}`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) throw new Error("Không tải được khóa học");
-  return res.json();
-};
-
-export const getStudentsByCourse = async (
-  courseId: string
-): Promise<Student[]> => {
-  const res = await fetch(`${API_BASE_URL}/courses/${courseId}/students`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) throw new Error("Không tải được danh sách sinh viên");
-  return res.json();
 };
 
 export const enrollCourse = async (data: {
