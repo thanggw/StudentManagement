@@ -27,13 +27,13 @@ export default function Sidebar() {
       icon: <ProfileOutlined />,
       label: <Link href="/dashboard/profile">Profile</Link>,
     },
+    {
+      key: "courses",
+      icon: <BookOutlined />,
+      label: <Link href="/dashboard/courses">Courses</Link>,
+    },
     ...(isAdmin
       ? [
-          {
-            key: "courses",
-            icon: <BookOutlined />,
-            label: <Link href="/dashboard/courses">Courses</Link>,
-          },
           {
             key: "users",
             icon: <TeamOutlined />,

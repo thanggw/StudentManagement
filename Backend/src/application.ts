@@ -17,7 +17,10 @@ import {
 } from '@loopback/authentication-jwt';
 import {MongodbDataSource} from './datasources';
 import {MyUserService} from './services/user.service';
-
+import {CartItemRepository} from './repositories/cart-item.repository';
+import {CourseRepository} from './repositories/course.repository';
+import {CartItemController} from './controllers/cart-item.controller';
+import {RedisService} from './services/redis.service';
 export {ApplicationConfig};
 
 export const CUSTOM_USER_SERVICE = 'services.CustomUserService';
@@ -54,9 +57,15 @@ export class MyLoopbackAppApplication extends BootMixin(
     this.bind(TokenServiceBindings.TOKEN_EXPIRES_IN).to(
       process.env.JWT_EXPIRES_IN || '3600',
     );
+    this.bind('services.RedisService').toClass(RedisService);
 
     // Bind custom user service với custom binding key
     this.bind(CUSTOM_USER_SERVICE).toClass(MyUserService);
+
+    this.repository(CartItemRepository);
+    this.repository(CourseRepository);
+
+    this.controller(CartItemController);
 
     this.projectRoot = __dirname;
     // Customize @loopback/boot Booter Conventions here

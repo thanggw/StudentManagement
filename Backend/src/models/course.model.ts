@@ -1,7 +1,7 @@
 import {model, property, hasMany} from '@loopback/repository';
 import {BaseEntity} from './base.model';
 import {Enrollment, EnrollmentWithRelations} from './enrollment.model';
-
+import {CartItem} from './cart-item.model';
 @model()
 export class Course extends BaseEntity {
   @property({
@@ -29,6 +29,9 @@ export class Course extends BaseEntity {
 
   @hasMany(() => Enrollment, {keyTo: 'courseId'})
   enrollments?: EnrollmentWithRelations[];
+
+  @hasMany(() => CartItem, {keyTo: 'courseId'})
+  cartItems?: CartItem[];
 
   constructor(data?: Partial<Course>) {
     super(data);
