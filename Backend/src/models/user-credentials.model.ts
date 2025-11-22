@@ -8,11 +8,11 @@ export class UserCredentials extends Entity {
     type: 'string',
     id: true,
   })
-  usersId: string;
+  usersId?: string;
 
   @property({
     type: 'string',
     required: true,
   })
-  password: string;
+  password?: string;
 }

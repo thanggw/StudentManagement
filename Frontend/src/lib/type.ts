@@ -4,6 +4,7 @@ export interface User {
   name: string;
   email: string;
   roles: Roles[];
+  balance: number;
 }
 export interface UserWithDates extends User {
   createdAt: string;

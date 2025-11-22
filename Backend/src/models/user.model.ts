@@ -10,20 +10,25 @@ export class User extends BaseEntity {
     required: true,
     index: {unique: true},
   })
-  email: string;
+  email?: string;
 
   @property({
     type: 'string',
     required: true,
   })
-  name: string;
-
+  name?: string;
+  @property({
+    type: 'number',
+    default: 0,
+    mongodb: {dataType: 'Number'},
+  })
+  balance?: number;
   @property({
     type: 'array',
     itemType: 'string',
     default: ['user'],
   })
-  roles: string[];
+  roles?: string[];
 
   @hasOne(() => UserCredentials)
   userCredentials?: UserCredentials;

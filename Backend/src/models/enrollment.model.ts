@@ -6,16 +6,16 @@ import {Course, CourseWithRelations} from './course.model';
 @model()
 export class Enrollment extends BaseEntity {
   @belongsTo(() => Student, {name: 'student'})
-  studentId: string;
+  studentId?: string;
 
   @belongsTo(() => Course, {name: 'course'})
-  courseId: string;
+  courseId?: string;
 
   @property({
     type: 'string',
     required: true,
   })
-  semester: string;
+  semester?: string;
 
   @property({
     type: 'number',

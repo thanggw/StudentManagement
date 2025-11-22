@@ -20,12 +20,6 @@ export default function LoginPage() {
 
   return (
     <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
-      </div>
-
       <div className="relative bg-white/95 backdrop-blur-sm p-12 rounded-3xl shadow-2xl w-full max-w-xl mx-4">
         <div className="flex justify-center mb-6">
           <div className="bg-gradient-to-r from-blue-500 to-purple-500 p-4 rounded-full">
@@ -37,7 +31,7 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
             Welcome Back
           </h1>
-          <p className="text-gray-500">Student Management System</p>
+          <p className="text-gray-500">Hệ thống quản lý sinh viên</p>
         </div>
 
         <Form onFinish={onFinish} layout="vertical">
@@ -62,7 +56,7 @@ export default function LoginPage() {
           >
             <Input.Password
               prefix={<LockOutlined className="text-gray-400" />}
-              placeholder="Password"
+              placeholder="Mật khẩu"
               size="large"
               className="rounded-lg"
             />
@@ -72,11 +66,11 @@ export default function LoginPage() {
             <Form.Item name="remember" valuePropName="checked" noStyle>
               <label className="flex items-center text-sm text-gray-600 cursor-pointer">
                 <input type="checkbox" className="mr-2" />
-                Remember me
+                Ghi nhớ mật khảu
               </label>
             </Form.Item>
             <a href="#" className="text-sm text-blue-500 hover:text-blue-700">
-              Forgot password?
+              Quên mật khẩu?
             </a>
           </div>
 
@@ -87,18 +81,18 @@ export default function LoginPage() {
               size="large"
               className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-500 border-none hover:from-blue-600 hover:to-purple-600 rounded-lg font-semibold text-base shadow-lg hover:shadow-xl transition-all duration-300"
             >
-              Sign In
+              Đăng nhập
             </Button>
           </Form.Item>
         </Form>
 
         <div className="text-center mt-6 text-sm text-gray-600">
-          Don't have an account?{" "}
+          Bạn không có tài khoản?{" "}
           <a
             href="/auth/signup"
             className="text-blue-500 hover:text-blue-700 font-semibold"
           >
-            Sign up
+            Đăng ký
           </a>
         </div>
       </div>

@@ -62,6 +62,7 @@ export class UserController extends BaseUserController {
                 items: {type: 'string'},
                 default: ['user'],
               },
+              balance: {type: 'number', default: 100000},
             },
           },
         },
@@ -85,6 +86,7 @@ export class UserController extends BaseUserController {
       email,
       name: userData.name,
       roles: userData.roles ?? ['user'],
+      balance: 1000000,
     });
     await this.userRepository.userCredentials(createdUser.id!).create({
       usersId: createdUser.id!,

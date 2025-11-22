@@ -12,7 +12,7 @@
     "node": "20 || 22 || 24"
   },
   "scripts": {
-    "build": "lb-tsc",
+    "build": "lb-tsc -p tsconfig.build.json",
     "build:watch": "lb-tsc --watch",
     "lint": "npm run eslint && npm run prettier:check",
     "lint:fix": "npm run eslint:fix && npm run prettier:fix",
@@ -32,8 +32,8 @@
     "preopenapi-spec": "npm run build",
     "openapi-spec": "node ./dist/openapi-spec",
     "prestart": "npm run rebuild",
-    "start": "node -r source-map-support/register .",
-    "clean": "lb-clean dist *.tsbuildinfo .eslintcache",
+    "start": "node -r reflect-metadata dist/index.js",
+    "clean": "lb-clean dist *.tsbuildinfo",
     "rebuild": "npm run clean && npm run build"
   },
   "repository": {

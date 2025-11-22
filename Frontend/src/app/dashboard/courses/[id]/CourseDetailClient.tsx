@@ -1,47 +1,25 @@
-"use client";
-
-import { useState } from "react";
-import { Button, Card, Descriptions, List, Avatar, message, Tag } from "antd";
-import { ShoppingCartOutlined, UserOutlined } from "@ant-design/icons";
-import { useRouter } from "next/navigation";
-import { Course, Student } from "@/lib/type";
-import { useAuth } from "@/hooks/useAuth";
+import { Card, Descriptions, List, Avatar, Tag, Button } from "antd";
+import { UserOutlined } from "@ant-design/icons";
 import Link from "next/link";
-import { useDispatch } from "react-redux";
-
-interface CourseDetailClientProps {
+import EnrollButton from "./EnrollButton";
+import { Course, Student } from "@/lib/type";
+import { Roles } from "@/lib/constants";
+import { apiRequestServer } from "@/lib/api-server";
+import { User } from "@/lib/type";
+import { cookies } from "next/headers";
+interface CourseDetailProps {
   course: Course;
   students: Student[];
 }
 
-export default function CourseDetailClient({
+export default async function CourseDetail({
   course,
   students,
-}: CourseDetailClientProps) {
-  const router = useRouter();
-  const { user, isAdmin } = useAuth(false);
-  const [enrolling, setEnrolling] = useState(false);
-  const dispatch = useDispatch();
-
-  const handleAddToCart = async () => {
-    if (!user) {
-      message.warning("Vui lòng đăng nhập để đăng ký khóa học");
-      router.push("/auth/login");
-      return;
-    }
-
-    if (isAdmin) {
-      message.info("Admin không thể đăng ký học");
-      return;
-    }
-
-    dispatch({
-      type: "cart/addRequest",
-      payload: { course },
-    });
-
-    message.success("Đã thêm vào giỏ hàng!");
-  };
+}: CourseDetailProps) {
+  const cookieReceived = await cookies();
+  const token = cookieReceived.get("token")?.value;
+  const user = await apiRequestServer<User>("/users/me", token);
+  const isAdmin = user?.roles?.includes(Roles.ADMIN) || false;
 
   return (
     <div className="max-w-5xl mx-auto p-6">
@@ -72,28 +50,12 @@ export default function CourseDetailClient({
           </Descriptions.Item>
         </Descriptions>
 
-        <div className="mt-8 flex gap-4">
-          {!isAdmin && (
-            <Button
-              type="primary"
-              size="large"
-              icon={<ShoppingCartOutlined />}
-              onClick={handleAddToCart}
-              loading={enrolling}
-              className="font-medium"
-            >
-              Thêm vào giỏ hàng / Đăng ký học
-            </Button>
-          )}
-
-          {isAdmin && (
-            <Button type="default" size="large">
-              Quản lý khóa học
-            </Button>
-          )}
+        <div className="mt-8">
+          {/* Chỉ phần này cần client */}
+          <EnrollButton course={course} />
         </div>
 
-        {/* Danh sách sinh viên (chỉ admin thấy) */}
+        {/* Danh sách sinh viên - chỉ admin thấy */}
         {isAdmin && (
           <div className="mt-10">
             <h3 className="text-lg font-semibold mb-4">
