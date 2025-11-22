@@ -21,6 +21,7 @@ import {CartItemRepository} from './repositories/cart-item.repository';
 import {CourseRepository} from './repositories/course.repository';
 import {CartItemController} from './controllers/cart-item.controller';
 import {RedisService} from './services/redis.service';
+import {CheckoutService} from './services/checkout.service';
 export {ApplicationConfig};
 
 export const CUSTOM_USER_SERVICE = 'services.CustomUserService';
@@ -58,6 +59,7 @@ export class MyLoopbackAppApplication extends BootMixin(
       process.env.JWT_EXPIRES_IN || '3600',
     );
     this.bind('services.RedisService').toClass(RedisService);
+    this.bind('services.CheckoutService').toClass(CheckoutService);
 
     // Bind custom user service với custom binding key
     this.bind(CUSTOM_USER_SERVICE).toClass(MyUserService);

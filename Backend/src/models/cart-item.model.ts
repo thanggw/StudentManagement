@@ -6,10 +6,10 @@ import {Student} from './student.model';
 @model()
 export class CartItem extends BaseEntity {
   @belongsTo(() => Student, {name: 'student'})
-  studentId: string;
+  studentId?: string;
 
   @belongsTo(() => Course, {name: 'course'})
-  courseId: string;
+  courseId?: string;
 
   @property({
     type: 'date',

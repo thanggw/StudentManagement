@@ -8,37 +8,37 @@ export class Student extends BaseEntity {
     type: 'string',
     required: true,
   })
-  studentCode: string;
+  studentCode?: string;
 
   @property({
     type: 'string',
     required: true,
   })
-  fullName: string;
+  fullName?: string;
 
   @property({
     type: 'string',
     required: true,
   })
-  email: string;
+  email?: string;
 
   @property({
     type: 'string',
     required: true,
   })
-  phoneNumber: string;
+  phoneNumber?: string;
 
   @property({
     type: 'string',
     required: true,
   })
-  major: string;
+  major?: string;
 
   @property({
     type: 'number',
     required: true,
   })
-  gpa: number;
+  gpa?: number;
 
   @property({
     type: 'number',
@@ -50,7 +50,14 @@ export class Student extends BaseEntity {
     type: 'string',
     required: true,
   })
-  status: string;
+  status?: string;
+
+  @property({
+    type: 'number',
+    default: 0,
+    mongodb: {dataType: 'Number'},
+  })
+  balance?: number;
 
   @hasMany(() => Enrollment, {keyTo: 'studentId'})
   enrollments?: EnrollmentWithRelations[];

@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePaginatedData } from "@/hooks/usePaginatedData";
 import { getCourses } from "@/lib/api";
 import { useRouter } from "next/navigation";
+
 const { TextArea } = Input;
 
 export default function CoursesPage() {
@@ -18,6 +19,7 @@ export default function CoursesPage() {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [form] = Form.useForm();
   const router = useRouter();
+
   const {
     data: courses,
     total,
@@ -38,15 +40,19 @@ export default function CoursesPage() {
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
+
       const processedValues = {
         ...values,
         credits: Number(values.credits),
+        price: Number(values.price),
       };
+
       if (editingCourse) {
         await updateCourse(editingCourse.id, processedValues);
       } else {
         await createCourse(processedValues);
       }
+
       setIsModalOpen(false);
       refetchPage1();
       message.success("Operation successful");
@@ -69,6 +75,7 @@ export default function CoursesPage() {
     { title: "Course Code", dataIndex: "courseCode", key: "courseCode" },
     { title: "Course Name", dataIndex: "courseName", key: "courseName" },
     { title: "Credits", dataIndex: "credits", key: "credits" },
+    { title: "Price", dataIndex: "price", key: "price" },
     {
       title: "Description",
       dataIndex: "description",
@@ -143,6 +150,7 @@ export default function CoursesPage() {
           >
             <Input />
           </Form.Item>
+
           <Form.Item
             name="courseName"
             label="Course Name"
@@ -150,6 +158,7 @@ export default function CoursesPage() {
           >
             <Input />
           </Form.Item>
+
           <Form.Item
             name="credits"
             label="Credits"
@@ -157,6 +166,15 @@ export default function CoursesPage() {
           >
             <Input type="number" />
           </Form.Item>
+
+          <Form.Item
+            name="price"
+            label="Price"
+            rules={[{ required: true, message: "Price is required" }]}
+          >
+            <Input type="number" />
+          </Form.Item>
+
           <Form.Item name="description" label="Description">
             <TextArea rows={3} />
           </Form.Item>

@@ -29,12 +29,6 @@ export default function SignupPage() {
 
   return (
     <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
-      </div>
-
       <div className="relative bg-white/95 backdrop-blur-sm p-12 rounded-3xl shadow-2xl w-full max-w-xl mx-4">
         <div className="flex justify-center mb-8">
           <div className="bg-gradient-to-r from-blue-500 to-purple-500 p-6 rounded-full shadow-lg">
@@ -44,11 +38,9 @@ export default function SignupPage() {
 
         <div className="text-center mb-10">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
-            Create Account
+            Tạo tài khoản
           </h1>
-          <p className="text-gray-500 text-lg">
-            Join Student Management System
-          </p>
+          <p className="text-gray-500 text-lg">Hệ thống quản lý sinh viên</p>
         </div>
 
         <Form onFinish={onFinish} layout="vertical">
@@ -73,7 +65,7 @@ export default function SignupPage() {
           >
             <Input
               prefix={<UserOutlined className="text-gray-400" />}
-              placeholder="Full Name"
+              placeholder="Họ và tên"
               size="large"
               className="rounded-lg"
             />
@@ -88,7 +80,7 @@ export default function SignupPage() {
           >
             <Input.Password
               prefix={<LockOutlined className="text-gray-400" />}
-              placeholder="Password"
+              placeholder="Mật khẩu"
               size="large"
               className="rounded-lg"
             />
@@ -111,7 +103,7 @@ export default function SignupPage() {
           >
             <Input.Password
               prefix={<LockOutlined className="text-gray-400" />}
-              placeholder="Confirm Password"
+              placeholder="Xác nhận mật khẩu"
               size="large"
               className="rounded-lg"
             />
@@ -124,18 +116,18 @@ export default function SignupPage() {
               size="large"
               className="w-full h-14 bg-gradient-to-r from-blue-500 to-purple-500 border-none hover:from-blue-600 hover:to-purple-600 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 mt-4"
             >
-              Create Account
+              Tạo tài khoản
             </Button>
           </Form.Item>
         </Form>
 
         <div className="text-center mt-8 text-base text-gray-600">
-          Already have an account?{" "}
+          Bạn đã có tài khoản?{" "}
           <a
             href="/auth/login"
             className="text-blue-500 hover:text-blue-700 font-semibold"
           >
-            Sign in
+            Đăng nhập
           </a>
         </div>
       </div>

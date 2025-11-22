@@ -8,19 +8,27 @@ export class Course extends BaseEntity {
     type: 'string',
     required: true,
   })
-  courseCode: string;
+  courseCode?: string;
 
   @property({
     type: 'string',
     required: true,
   })
-  courseName: string;
+  courseName?: string;
 
   @property({
     type: 'number',
     required: true,
   })
-  credits: number;
+  credits?: number;
+
+  @property({
+    type: 'number',
+    required: true,
+    default: 0,
+    mongodb: {dataType: 'Number'},
+  })
+  price?: number; // VND
 
   @property({
     type: 'string',

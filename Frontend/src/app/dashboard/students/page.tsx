@@ -184,10 +184,16 @@ export default function StudentsPage() {
             name="gpa"
             label="GPA"
             rules={[{ required: true, type: "number", min: 0, max: 4 }]}
+            getValueFromEvent={(e) => Number(e.target.value)}
           >
             <Input type="number" step="0.1" />
           </Form.Item>
-          <Form.Item name="admissionYear" label="Admission Year">
+          <Form.Item
+            name="admissionYear"
+            label="Admission Year"
+            rules={[{ type: "number", min: 1900, message: "Invalid year" }]}
+            getValueFromEvent={(e) => Number(e.target.value)}
+          >
             <Input
               type="number"
               min={1900}
