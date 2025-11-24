@@ -6,6 +6,7 @@ import {compare} from 'bcrypt';
 import {User} from '../models/user.model';
 import {UserRepository} from '../repositories/user.repository';
 import * as bcrypt from 'bcrypt';
+import {MyUserTokenProfile} from '../dto/user-profile.types';
 
 // Định nghĩa Credentials interface
 export interface Credentials {
@@ -47,12 +48,12 @@ export class MyUserService implements UserService<User, Credentials> {
     return foundUser;
   }
 
-  convertToUserProfile(user: User): UserProfile {
+  convertToUserProfile(user: User): MyUserTokenProfile {
     return {
       [securityId]: user.id!.toString(),
       id: user.id,
       email: user.email,
       name: user.name,
-    };
+    } as MyUserTokenProfile;
   }
 }
