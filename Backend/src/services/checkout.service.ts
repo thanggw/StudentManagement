@@ -28,108 +28,111 @@ export class CheckoutService {
   ) {}
 
   async checkout(studentId: string) {
-    const session = await this.studentRepository.dataSource.beginTransaction({
-      timeout: 30000,
-    });
-
     try {
       // 1. Lấy giỏ hàng từ Redis
       const cartKey = `cart:${studentId}`;
       const cartJson = await this.redisService.get(cartKey);
+
       if (!cartJson || cartJson === '[]') {
         throw new HttpErrors.BadRequest('Giỏ hàng trống');
       }
-      const cart = JSON.parse(cartJson);
 
-      // 2. Lấy thông tin khóa học + tính tổng tiền
+      const cart = JSON.parse(cartJson);
       const courseIds = cart.map((item: any) => item.courseId);
-      const courses = await this.courseRepository.find(
-        {
-          where: {id: {inq: courseIds}},
-        },
-        {transaction: session},
-      );
+
+      // 2. Lấy khóa học + tính tổng tiền
+      const courses = await this.courseRepository.find({
+        where: {id: {inq: courseIds}},
+      });
 
       let totalAmount = 0;
-      const orderItemsData = [];
+      const orderItemsData: Array<any> = [];
 
       for (const item of cart) {
         const course = courses.find(c => c.id === item.courseId);
         if (!course)
           throw new HttpErrors.NotFound(`Course ${item.courseId} not found`);
+
         if (course.price == null)
           throw new HttpErrors.BadRequest(
             `Course ${course.courseCode} chưa có giá`,
           );
 
         totalAmount += course.price;
+
         orderItemsData.push({
           courseId: course.id,
           priceAtPurchase: course.price,
         });
       }
 
-      // 3. Kiểm tra số dư
-      const student = await this.userRepository.findById(
-        studentId,
-        {},
-        {transaction: session},
+      // 3. Trừ tiền
+      const result = await this.userRepository.updateAll(
+        {
+          id: studentId,
+          balance: {gte: totalAmount},
+        },
+        {
+          $inc: {balance: -totalAmount},
+        },
       );
-      if ((student.balance ?? 0) < totalAmount) {
+
+      if (result.count === 0) {
         throw new HttpErrors.PaymentRequired('Số dư không đủ để thanh toán');
       }
 
-      // 4. Trừ tiền
-      await this.userRepository.updateById(
-        studentId,
-        {balance: (student.balance ?? 0) - totalAmount},
-        {transaction: session},
-      );
+      // 4. tạo order + order items
+      const session = await this.orderRepository.dataSource.beginTransaction();
 
-      // 5. Tạo Order
-      const order = await this.orderRepository.create(
-        {
-          studentId,
-          totalAmount,
-          status: 'completed',
-        },
-        {transaction: session},
-      );
-
-      // 6. Tạo OrderItem + cập nhật CartItem thành registered
-      for (const itemData of orderItemsData) {
-        const orderItem = await this.orderItemRepository.create(
+      try {
+        const order = await this.orderRepository.create(
           {
-            orderId: order.id!,
-            courseId: itemData.courseId,
-            priceAtPurchase: itemData.priceAtPurchase,
+            studentId,
+            totalAmount,
+            status: 'completed',
           },
           {transaction: session},
         );
 
-        // Cập nhật CartItem (nếu vẫn lưu trong DB)
-        await this.cartItemRepository.updateAll(
-          {status: 'registered'},
-          {studentId, courseId: itemData.courseId},
-          {transaction: session},
-        );
+        for (const itemData of orderItemsData) {
+          await this.orderItemRepository.create(
+            {
+              orderId: order.id!,
+              courseId: itemData.courseId,
+              priceAtPurchase: itemData.priceAtPurchase,
+            },
+            {transaction: session},
+          );
+
+          await this.cartItemRepository.updateAll(
+            {status: 'registered'},
+            {studentId, courseId: itemData.courseId},
+            {transaction: session},
+          );
+        }
+
+        // Xóa giỏ hàng Redis
+        await this.redisService.del(cartKey);
+
+        await session.commit();
+
+        return {
+          message: 'Thanh toán thành công!',
+          orderId: order.id,
+          totalAmount,
+        };
+      } catch (innerError) {
+        await session.rollback();
+
+        // Số các bước sau thằng trừ tiền mà lỗi thì hoàn tiền lại
+        await this.userRepository.updateById(studentId, {
+          $inc: {balance: totalAmount},
+        });
+
+        throw innerError;
       }
-
-      // 7. Xóa giỏ hàng Redis
-      await this.redisService.del(cartKey);
-
-      // Commit transaction
-      await session.commit();
-
-      return {
-        message: 'Thanh toán thành công!',
-        orderId: order.id,
-        totalAmount,
-        remainingBalance: (student.balance ?? 0) - totalAmount,
-      };
     } catch (error) {
-      await session.rollback();
-      console.error('Checkout failed, rolled back:', error);
+      console.error('Checkout failed:', error);
       throw error;
     }
   }
