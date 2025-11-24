@@ -19,22 +19,28 @@ export class MyUserService implements UserService<User, Credentials> {
     public userRepository: UserRepository,
   ) {}
 
-  async verifyCredentials(credentials: {email: string; password: string}) {
+  async verifyCredentials(credentials: Credentials) {
     const foundUser = await this.userRepository.findOne({
       where: {email: credentials.email},
     });
+
     if (!foundUser) {
       throw new HttpErrors.Unauthorized('Invalid email or password');
     }
 
-    const userCreds = await this.userRepository
-      .userCredentials(foundUser.id)
-      .get();
-    const isPasswordMatched = await bcrypt.compare(
+    let userCreds;
+    try {
+      userCreds = await this.userRepository.userCredentials(foundUser.id).get();
+    } catch (err) {
+      throw new HttpErrors.Unauthorized('Invalid email or password');
+    }
+
+    const passwordMatched = await bcrypt.compare(
       credentials.password,
-      userCreds.password,
+      userCreds.password ?? '',
     );
-    if (!isPasswordMatched) {
+
+    if (!passwordMatched) {
       throw new HttpErrors.Unauthorized('Invalid email or password');
     }
 

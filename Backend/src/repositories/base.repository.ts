@@ -58,14 +58,4 @@ export abstract class BaseRepository<
     ]);
     return {data, total: countResult.count, page, limit};
   }
-  createInclusionResolver(
-    relationName: string,
-    targetRepo: any,
-  ): InclusionResolver<T, Entity> {
-    const resolver = this[relationName as keyof this];
-    if (typeof (resolver as any)?.inclusionResolver === 'function') {
-      return (resolver as any).inclusionResolver;
-    }
-    throw new Error(`No inclusion resolver found for relation ${relationName}`);
-  }
 }

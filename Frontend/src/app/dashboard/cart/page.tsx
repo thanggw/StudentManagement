@@ -186,11 +186,10 @@ export default function CartPage() {
                       block
                       className="h-12 text-lg font-medium"
                       onClick={() => {
-                        message.success("Chức năng đăng ký đang phát triển!");
-                        // router.push("/dashboard/cart/checkout");
+                        router.push("/dashboard/cart/checkout");
                       }}
                     >
-                      Đăng ký tất cả môn học
+                      Thanh toán
                       <ArrowRightOutlined />
                     </Button>
                   </div>

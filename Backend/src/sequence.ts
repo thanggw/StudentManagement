@@ -46,7 +46,7 @@ export class MySequence implements SequenceHandler {
       const args = await this.parseParams(request, route);
       const result = await this.invoke(route, args);
       this.send(response, result);
-    } catch (err) {
+    } catch (err: any) {
       if (
         err.code === AUTHENTICATION_STRATEGY_NOT_FOUND ||
         err.code === USER_PROFILE_NOT_FOUND
